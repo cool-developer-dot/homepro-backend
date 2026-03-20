@@ -25,15 +25,34 @@ function getCookieOptions() {
   };
 }
 
+// Backwards/forwards compatibility:
+// - your local `.env` may still use `homepro_token`
+// - production uses `token`
+// Setting/reading both avoids "login works but auth middleware redirects to /login".
+const COOKIE_NAMES = Array.from(
+  new Set([config.authCookieName, "token", "homepro_token"].filter(Boolean)),
+);
+
 function setAuthCookie(res, token) {
-  res.cookie(config.authCookieName, token, getCookieOptions());
+  const opts = getCookieOptions();
+  for (const name of COOKIE_NAMES) {
+    res.cookie(name, token, opts);
+  }
 }
 
 function clearAuthCookie(res) {
-  res.cookie(config.authCookieName, "", {
-    ...getCookieOptions(),
-    maxAge: 0,
-  });
+  const opts = { ...getCookieOptions(), maxAge: 0 };
+  for (const name of COOKIE_NAMES) {
+    res.cookie(name, "", opts);
+  }
+}
+
+function getAuthTokenFromCookies(req) {
+  for (const name of COOKIE_NAMES) {
+    const token = req.cookies?.[name];
+    if (token) return token;
+  }
+  return null;
 }
 
 router.post("/register", async (req, res) => {
@@ -102,7 +121,7 @@ router.post("/logout", (req, res) => {
 
 router.get("/me", async (req, res) => {
   try {
-    const token = req.cookies[config.authCookieName];
+    const token = getAuthTokenFromCookies(req);
     if (!token) return res.status(401).json({ user: null });
     const payload = await verifyAuthToken(token);
     return res.json({ user: payload.user || null });
