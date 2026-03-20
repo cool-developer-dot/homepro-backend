@@ -20,18 +20,22 @@ async function bootstrap() {
   app.use(express.json());
   app.use(cookieParser());
   const allowedOrigins = config.corsOrigin.split(",").map((o) => o.trim()).filter(Boolean);
-  app.use(
-    cors({
-      origin(origin, callback) {
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.includes(origin)) return callback(null, true);
-        return callback(new Error("CORS not allowed"));
-      },
-      credentials: true,
-      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-      optionsSuccessStatus: 204,
-    }),
-  );
+  const corsOptions = {
+    origin(origin, callback) {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      // Don't throw here; throwing can prevent headers from being set on the response.
+      return callback(null, false);
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    optionsSuccessStatus: 204,
+  };
+
+  // Apply CORS before routes.
+  app.use(cors(corsOptions));
+  // Explicitly handle preflight requests.
+  app.options("*", cors(corsOptions));
 
   app.get("/health", (_, res) =>
     res.json({
