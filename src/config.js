@@ -7,7 +7,7 @@ const config = {
   mongodbUri: process.env.MONGODB_URI || "",
   jwtSecret: process.env.JWT_SECRET || "",
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
-  authCookieName: process.env.AUTH_COOKIE_NAME || "homepro_token",
+  authCookieName: process.env.AUTH_COOKIE_NAME || "token",
   corsOrigin:
     process.env.CORS_ORIGIN ||
     "https://homepro-frontend.vercel.app,http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3003",

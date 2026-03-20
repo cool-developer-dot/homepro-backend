@@ -7,12 +7,20 @@ const { config } = require("./config");
 const router = express.Router();
 
 function getCookieOptions() {
-  const isProduction = config.nodeEnv === "production";
+  // Browsers require `SameSite=None` cookies to also be `Secure`.
+  // For Render, traffic is HTTPS even if `NODE_ENV` is misconfigured, so we also
+  // treat an `https://` frontend origin as a signal to use secure cross-site cookies.
+  const corsIsHttps = config.corsOrigin
+    .split(",")
+    .map((o) => o.trim())
+    .some((o) => o.startsWith("https://"));
+
+  const secureCrossSiteCookies = config.nodeEnv === "production" || corsIsHttps;
   return {
     httpOnly: true,
     // Cross-site cookies are required for Vercel frontend -> Render backend auth.
-    sameSite: isProduction ? "none" : "lax",
-    secure: isProduction,
+    sameSite: secureCrossSiteCookies ? "none" : "lax",
+    secure: secureCrossSiteCookies,
     path: "/",
   };
 }
