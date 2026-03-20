@@ -1,0 +1,56 @@
+const express = require("express");
+const cors = require("cors");
+const cookieParser = require("cookie-parser");
+const { config } = require("./config");
+const { connectDb } = require("./db");
+const { authRouter } = require("./auth-routes");
+
+async function bootstrap() {
+  let dbReady = true;
+  try {
+    await connectDb();
+  } catch (err) {
+    dbReady = false;
+    // eslint-disable-next-line no-console
+    console.warn("MongoDB not connected yet:", err?.message || err);
+  }
+
+  const app = express();
+  app.set("trust proxy", 1);
+  app.use(express.json());
+  app.use(cookieParser());
+  const allowedOrigins = config.corsOrigin.split(",").map((o) => o.trim()).filter(Boolean);
+  app.use(
+    cors({
+      origin(origin, callback) {
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        return callback(new Error("CORS not allowed"));
+      },
+      credentials: true,
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      optionsSuccessStatus: 204,
+    }),
+  );
+
+  app.get("/health", (_, res) =>
+    res.json({
+      ok: dbReady,
+      env: config.nodeEnv,
+      uptime: Math.floor(process.uptime()),
+    }),
+  );
+  app.use("/api/auth", authRouter);
+
+  app.listen(config.port, () => {
+    // eslint-disable-next-line no-console
+    console.log(`Backend running on http://localhost:${config.port}`);
+  });
+}
+
+bootstrap().catch((err) => {
+  // eslint-disable-next-line no-console
+  console.error("Backend startup failed:", err);
+  process.exit(1);
+});
+
