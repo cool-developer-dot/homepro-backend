@@ -6,14 +6,18 @@ const { connectDb } = require("./db");
 const { authRouter } = require("./auth-routes");
 
 async function bootstrap() {
-  let dbReady = true;
-  try {
-    await connectDb();
-  } catch (err) {
-    dbReady = false;
-    // eslint-disable-next-line no-console
-    console.warn("MongoDB not connected yet:", err?.message || err);
-  }
+  // Important for Render: don't block server startup on MongoDB connectivity.
+  // Render's health checks may run before MongoDB is reachable yet.
+  let dbReady = false;
+  connectDb()
+    .then(() => {
+      dbReady = true;
+    })
+    .catch((err) => {
+      // eslint-disable-next-line no-console
+      console.warn("MongoDB not connected yet:", err?.message || err);
+      dbReady = false;
+    });
 
   const app = express();
   app.set("trust proxy", 1);
